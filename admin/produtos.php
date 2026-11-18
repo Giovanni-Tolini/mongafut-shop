@@ -1,5 +1,4 @@
 
-
 <?php
 require dirname(__DIR__) . '/config/bootstrap.php';
 requireAdmin();
@@ -12,33 +11,40 @@ $categorias = db()->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $produtoEdicao = null;
+$imagensEdicao = [];
 
 /*
 |--------------------------------------------------------------------------
-| Processamento dos formulários
+| PROCESSAMENTO DOS FORMULÁRIOS
 |--------------------------------------------------------------------------
 */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $csrf = $_POST['_csrf'] ?? '';
 
     if (!hash_equals($_SESSION['_csrf'] ?? '', $csrf)) {
-        $erro = 'Solicitação inválida. Atualize a página e tente novamente.';
-    } else {
-        $acao = $_POST['acao'] ?? '';
 
+        $erro = 'Solicitação inválida. Atualize a página e tente novamente.';
+
+    } else {
+
+        $acao = $_POST['acao'] ?? '';
         $pdo = db();
+
         $arquivosSalvos = [];
         $arquivosParaExcluir = [];
 
         try {
 
             /*
-            |--------------------------------------------------------------
-            | Excluir produto
-            |--------------------------------------------------------------
+            |--------------------------------------------------------------------------
+            | EXCLUIR PRODUTO
+            |--------------------------------------------------------------------------
             */
+
             if ($acao === 'excluir') {
+
                 $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
 
                 if (!$id || $id < 1) {
@@ -46,8 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $consulta = $pdo->prepare(
-                    'SELECT COUNT(*) FROM pedido_itens WHERE produto_id = :id'
+                    'SELECT COUNT(*)
+                     FROM pedido_itens
+                     WHERE produto_id = :id'
                 );
+
                 $consulta->execute(['id' => $id]);
 
                 if ((int) $consulta->fetchColumn() > 0) {
@@ -56,11 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                // Buscar todas as imagens antes de excluir o produto.
                 $consulta = $pdo->prepare(
-                    'SELECT imagem FROM produtos WHERE id = :id'
+                    'SELECT imagem
+                     FROM produtos
+                     WHERE id = :id'
                 );
+
                 $consulta->execute(['id' => $id]);
+
                 $produto = $consulta->fetch(PDO::FETCH_ASSOC);
 
                 if (!$produto) {
@@ -70,29 +82,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $arquivosParaExcluir[] = $produto['imagem'];
 
                 $consulta = $pdo->prepare(
-                    'SELECT imagem FROM produto_imagens WHERE produto_id = :id'
+                    'SELECT imagem
+                     FROM produto_imagens
+                     WHERE produto_id = :id'
                 );
+
                 $consulta->execute(['id' => $id]);
 
                 foreach ($consulta->fetchAll(PDO::FETCH_COLUMN) as $imagem) {
                     $arquivosParaExcluir[] = $imagem;
                 }
 
-                // A chave estrangeira remove os registros das fotos.
                 $consulta = $pdo->prepare(
-                    'DELETE FROM produtos WHERE id = :id'
+                    'DELETE FROM produtos
+                     WHERE id = :id'
                 );
+
                 $consulta->execute(['id' => $id]);
 
                 $mensagem = 'Produto excluído com sucesso.';
             }
 
             /*
-            |--------------------------------------------------------------
-            | Ativar ou desativar produto
-            |--------------------------------------------------------------
+            |--------------------------------------------------------------------------
+            | ATIVAR OU DESATIVAR PRODUTO
+            |--------------------------------------------------------------------------
             */
+
             elseif ($acao === 'alternar_status') {
+
                 $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
 
                 if (!$id || $id < 1) {
@@ -104,12 +122,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      SET ativo = IF(ativo = 1, 0, 1)
                      WHERE id = :id'
                 );
+
                 $consulta->execute(['id' => $id]);
 
                 if ($consulta->rowCount() === 0) {
+
                     $verifica = $pdo->prepare(
-                        'SELECT id FROM produtos WHERE id = :id'
+                        'SELECT id
+                         FROM produtos
+                         WHERE id = :id'
                     );
+
                     $verifica->execute(['id' => $id]);
 
                     if (!$verifica->fetch()) {
@@ -121,11 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             /*
-            |--------------------------------------------------------------
-            | Excluir uma imagem individual
-            |--------------------------------------------------------------
+            |--------------------------------------------------------------------------
+            | EXCLUIR UMA IMAGEM INDIVIDUAL
+            |--------------------------------------------------------------------------
             */
+
             elseif ($acao === 'excluir_imagem') {
+
                 $produtoId = filter_input(
                     INPUT_POST,
                     'produto_id',
@@ -173,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'produto_id' => $produtoId
                 ]);
 
-                // Buscar a próxima imagem para ser a principal.
+                // Buscar a próxima imagem da galeria.
                 $consulta = $pdo->prepare(
                     'SELECT imagem
                      FROM produto_imagens
@@ -207,10 +232,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             /*
-            |--------------------------------------------------------------
-            | Cadastrar ou editar produto
-            |--------------------------------------------------------------
+            |--------------------------------------------------------------------------
+            | CADASTRAR OU EDITAR PRODUTO
+            |--------------------------------------------------------------------------
             */
+
             elseif ($acao === 'salvar') {
 
                 $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
@@ -237,7 +263,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     FILTER_VALIDATE_INT
                 );
 
-                // Validar informações do produto.
+                /*
+                |--------------------------------------------------------------------------
+                | VALIDAR DADOS
+                |--------------------------------------------------------------------------
+                */
+
                 if ($nome === '') {
                     throw new RuntimeException('Informe o nome do produto.');
                 }
@@ -250,12 +281,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Informe um preço válido.');
                 }
 
-                if ($estoque === false || $estoque === null || $estoque < 0) {
+                if (
+                    $estoque === false ||
+                    $estoque === null ||
+                    $estoque < 0
+                ) {
                     throw new RuntimeException('Informe um estoque válido.');
                 }
 
                 $consulta = $pdo->prepare(
-                    'SELECT id FROM categorias WHERE id = :id'
+                    'SELECT id
+                     FROM categorias
+                     WHERE id = :id'
                 );
 
                 $consulta->execute(['id' => $categoriaId]);
@@ -264,19 +301,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Categoria não encontrada.');
                 }
 
-                // Iniciar transação.
+                /*
+                |--------------------------------------------------------------------------
+                | INICIAR TRANSAÇÃO
+                |--------------------------------------------------------------------------
+                */
+
                 $pdo->beginTransaction();
 
                 /*
-                |----------------------------------------------------------
-                | Atualizar ou cadastrar produto
-                |----------------------------------------------------------
+                |--------------------------------------------------------------------------
+                | ATUALIZAR PRODUTO EXISTENTE
+                |--------------------------------------------------------------------------
                 */
 
                 if ($id && $id > 0) {
 
                     $consulta = $pdo->prepare(
-                        'SELECT imagem FROM produtos WHERE id = :id'
+                        'SELECT imagem
+                         FROM produtos
+                         WHERE id = :id'
                     );
 
                     $consulta->execute(['id' => $id]);
@@ -311,15 +355,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $produtoId = $id;
 
-                } else {
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | CADASTRAR NOVO PRODUTO
+                |--------------------------------------------------------------------------
+                */
+
+                else {
 
                     $imagemPrincipal = 'sem-imagem.svg';
 
                     $consulta = $pdo->prepare(
                         'INSERT INTO produtos
-                         (categoria_id, nome, descricao, preco, estoque, imagem)
+                            (categoria_id, nome, descricao, preco, estoque, imagem)
                          VALUES
-                         (:categoria_id, :nome, :descricao, :preco, :estoque, :imagem)'
+                            (:categoria_id, :nome, :descricao, :preco, :estoque, :imagem)'
                     );
 
                     $consulta->execute([
@@ -335,15 +387,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 /*
-                |----------------------------------------------------------
-                | Preparar envio de várias imagens
-                |----------------------------------------------------------
+                |--------------------------------------------------------------------------
+                | PREPARAR PASTA DE IMAGENS
+                |--------------------------------------------------------------------------
                 */
 
-                $diretorio = dirname(__DIR__)
-                    . '/assets/img/produtos/';
+                $diretorio = dirname(__DIR__) . '/assets/img/produtos/';
 
                 if (!is_dir($diretorio)) {
+
                     if (!mkdir($diretorio, 0755, true)) {
                         throw new RuntimeException(
                             'Não foi possível criar a pasta de imagens.'
@@ -359,7 +411,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $finfo = new finfo(FILEINFO_MIME_TYPE);
 
-                // Descobrir a próxima posição das imagens.
+                /*
+                |--------------------------------------------------------------------------
+                | DESCOBRIR A PRÓXIMA ORDEM DA GALERIA
+                |--------------------------------------------------------------------------
+                */
+
                 $consulta = $pdo->prepare(
                     'SELECT COALESCE(MAX(ordem), 0)
                      FROM produto_imagens
@@ -371,9 +428,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $ordem = (int) $consulta->fetchColumn() + 1;
 
                 /*
-                |----------------------------------------------------------
-                | Processar cada imagem enviada
-                |----------------------------------------------------------
+                |--------------------------------------------------------------------------
+                | PROCESSAR TODAS AS IMAGENS ENVIADAS
+                |--------------------------------------------------------------------------
                 */
 
                 if (
@@ -383,16 +440,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $totalArquivos = count($_FILES['imagens']['name']);
 
+                    $limiteImagem = 8 * 1024 * 1024;
+
                     for ($i = 0; $i < $totalArquivos; $i++) {
 
                         $erroUpload = $_FILES['imagens']['error'][$i];
 
-                        // Nenhum arquivo selecionado.
+                        // Ignorar posições sem arquivo.
                         if ($erroUpload === UPLOAD_ERR_NO_FILE) {
                             continue;
                         }
 
                         if ($erroUpload !== UPLOAD_ERR_OK) {
+
+                            if ($erroUpload === UPLOAD_ERR_INI_SIZE) {
+                                throw new RuntimeException(
+                                    'Uma imagem ultrapassou o limite permitido pelo servidor.'
+                                );
+                            }
+
+                            if ($erroUpload === UPLOAD_ERR_FORM_SIZE) {
+                                throw new RuntimeException(
+                                    'Uma imagem ultrapassou o limite permitido pelo formulário.'
+                                );
+                            }
+
                             throw new RuntimeException(
                                 'Ocorreu um erro ao enviar uma das imagens.'
                             );
@@ -402,9 +474,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $tamanho = (int) $_FILES['imagens']['size'][$i];
 
-                        if ($tamanho > 3 * 1024 * 1024) {
+                        if ($tamanho > $limiteImagem) {
                             throw new RuntimeException(
-                                'Cada imagem deve ter no máximo 3 MB.'
+                                'Cada imagem deve ter no máximo 8 MB.'
+                            );
+                        }
+
+                        if (!is_uploaded_file($arquivoTemporario)) {
+                            throw new RuntimeException(
+                                'Um dos arquivos enviados é inválido.'
                             );
                         }
 
@@ -416,27 +494,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             );
                         }
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | GERAR NOME E SALVAR ARQUIVO
+                        |--------------------------------------------------------------------------
+                        */
+
                         $nomeArquivo = bin2hex(random_bytes(16))
                             . '.' . $tiposPermitidos[$tipo];
 
+                        $caminhoArquivo = $diretorio . $nomeArquivo;
+
                         if (!move_uploaded_file(
                             $arquivoTemporario,
-                            $diretorio . $nomeArquivo
+                            $caminhoArquivo
                         )) {
                             throw new RuntimeException(
                                 'Não foi possível salvar uma das imagens.'
                             );
                         }
 
-                        // Guardar o arquivo para eventual limpeza em caso de erro.
-                        $arquivosSalvos[] = $diretorio . $nomeArquivo;
+                        $arquivosSalvos[] = $caminhoArquivo;
 
-                        // Registrar imagem no banco.
+                        /*
+                        |--------------------------------------------------------------------------
+                        | REGISTRAR IMAGEM NA GALERIA
+                        |--------------------------------------------------------------------------
+                        */
+
                         $consulta = $pdo->prepare(
                             'INSERT INTO produto_imagens
-                             (produto_id, imagem, ordem)
+                                (produto_id, imagem, ordem)
                              VALUES
-                             (:produto_id, :imagem, :ordem)'
+                                (:produto_id, :imagem, :ordem)'
                         );
 
                         $consulta->execute([
@@ -445,7 +535,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'ordem' => $ordem
                         ]);
 
-                        // A primeira foto será a imagem principal.
+                        /*
+                        |--------------------------------------------------------------------------
+                        | DEFINIR PRIMEIRA IMAGEM COMO PRINCIPAL
+                        |--------------------------------------------------------------------------
+                        */
+
                         if (
                             $imagemPrincipal === 'sem-imagem.svg' ||
                             empty($imagemPrincipal)
@@ -458,9 +553,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 /*
-                |----------------------------------------------------------
-                | Atualizar imagem principal do produto
-                |----------------------------------------------------------
+                |--------------------------------------------------------------------------
+                | ATUALIZAR IMAGEM PRINCIPAL
+                |--------------------------------------------------------------------------
                 */
 
                 $consulta = $pdo->prepare(
@@ -473,6 +568,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'imagem' => $imagemPrincipal,
                     'id' => $produtoId
                 ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | FINALIZAR TRANSAÇÃO
+                |--------------------------------------------------------------------------
+                */
 
                 $pdo->commit();
 
@@ -491,7 +592,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->rollBack();
             }
 
-            // Remover arquivos enviados se a operação falhar.
+            // Apagar arquivos enviados caso a operação falhe.
             foreach ($arquivosSalvos as $arquivo) {
                 if (is_file($arquivo)) {
                     unlink($arquivo);
@@ -515,7 +616,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $erro = 'Não foi possível realizar a operação no banco de dados.';
         }
 
-        // Excluir arquivos físicos após a operação no banco.
+        /*
+        |--------------------------------------------------------------------------
+        | EXCLUIR ARQUIVOS FÍSICOS
+        |--------------------------------------------------------------------------
+        */
+
         $diretorioImagens = dirname(__DIR__) . '/assets/img/produtos/';
 
         foreach (array_unique($arquivosParaExcluir) as $arquivo) {
@@ -525,6 +631,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $arquivo !== 'sem-imagem.svg' &&
                 basename($arquivo) === $arquivo
             ) {
+
                 $caminho = $diretorioImagens . $arquivo;
 
                 if (is_file($caminho)) {
@@ -536,7 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /*
     |--------------------------------------------------------------------------
-    | Redirecionamento
+    | REDIRECIONAR APÓS O POST
     |--------------------------------------------------------------------------
     */
 
@@ -549,22 +656,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 /*
 |--------------------------------------------------------------------------
-| Recuperar mensagens
+| RECUPERAR MENSAGENS
 |--------------------------------------------------------------------------
 */
 
 $mensagem = $_SESSION['admin_mensagem'] ?? '';
 $erro = $_SESSION['admin_erro'] ?? '';
 
-unset($_SESSION['admin_mensagem'], $_SESSION['admin_erro']);
+unset(
+    $_SESSION['admin_mensagem'],
+    $_SESSION['admin_erro']
+);
 
 /*
 |--------------------------------------------------------------------------
-| Carregar produto para edição
+| CARREGAR PRODUTO PARA EDIÇÃO
 |--------------------------------------------------------------------------
 */
-
-$imagensEdicao = [];
 
 if (isset($_GET['editar'])) {
 
@@ -577,7 +685,9 @@ if (isset($_GET['editar'])) {
     if ($idEdicao && $idEdicao > 0) {
 
         $consulta = db()->prepare(
-            'SELECT * FROM produtos WHERE id = :id'
+            'SELECT *
+             FROM produtos
+             WHERE id = :id'
         );
 
         $consulta->execute(['id' => $idEdicao]);
@@ -604,7 +714,7 @@ if (isset($_GET['editar'])) {
 
 /*
 |--------------------------------------------------------------------------
-| Listar produtos
+| LISTAR PRODUTOS
 |--------------------------------------------------------------------------
 */
 
@@ -629,6 +739,8 @@ require dirname(__DIR__) . '/includes/header.php';
 
 <div class="container py-4">
 
+    <!-- CABEÇALHO -->
+
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <h1 class="h3">Gerenciar produtos</h1>
@@ -642,19 +754,25 @@ require dirname(__DIR__) . '/includes/header.php';
 
     </div>
 
+    <!-- MENSAGENS -->
+
     <?php if ($mensagem): ?>
+
         <div class="alert alert-success">
             <?= e($mensagem) ?>
         </div>
+
     <?php endif; ?>
 
     <?php if ($erro): ?>
+
         <div class="alert alert-danger">
             <?= e($erro) ?>
         </div>
+
     <?php endif; ?>
 
-    <!-- Formulário de cadastro e edição -->
+    <!-- FORMULÁRIO DE CADASTRO E EDIÇÃO -->
 
     <div class="card mb-4">
 
@@ -668,6 +786,7 @@ require dirname(__DIR__) . '/includes/header.php';
                 method="POST"
                 action="/mongafut_shop_v1/admin/produtos.php"
                 enctype="multipart/form-data"
+                id="formProduto"
             >
 
                 <input
@@ -676,7 +795,11 @@ require dirname(__DIR__) . '/includes/header.php';
                     value="<?= e($_SESSION['_csrf']) ?>"
                 >
 
-                <input type="hidden" name="acao" value="salvar">
+                <input
+                    type="hidden"
+                    name="acao"
+                    value="salvar"
+                >
 
                 <input
                     type="hidden"
@@ -684,9 +807,13 @@ require dirname(__DIR__) . '/includes/header.php';
                     value="<?= (int) ($produtoEdicao['id'] ?? 0) ?>"
                 >
 
+                <!-- NOME -->
+
                 <div class="mb-3">
 
-                    <label class="form-label">Nome do produto</label>
+                    <label class="form-label">
+                        Nome do produto
+                    </label>
 
                     <input
                         type="text"
@@ -698,9 +825,13 @@ require dirname(__DIR__) . '/includes/header.php';
 
                 </div>
 
+                <!-- CATEGORIA -->
+
                 <div class="mb-3">
 
-                    <label class="form-label">Categoria</label>
+                    <label class="form-label">
+                        Categoria
+                    </label>
 
                     <select
                         name="categoria_id"
@@ -708,7 +839,9 @@ require dirname(__DIR__) . '/includes/header.php';
                         required
                     >
 
-                        <option value="">Selecione uma categoria</option>
+                        <option value="">
+                            Selecione uma categoria
+                        </option>
 
                         <?php foreach ($categorias as $categoria): ?>
 
@@ -728,9 +861,13 @@ require dirname(__DIR__) . '/includes/header.php';
 
                 </div>
 
+                <!-- DESCRIÇÃO -->
+
                 <div class="mb-3">
 
-                    <label class="form-label">Descrição</label>
+                    <label class="form-label">
+                        Descrição
+                    </label>
 
                     <textarea
                         name="descricao"
@@ -740,11 +877,15 @@ require dirname(__DIR__) . '/includes/header.php';
 
                 </div>
 
+                <!-- PREÇO E ESTOQUE -->
+
                 <div class="row">
 
                     <div class="col-md-6 mb-3">
 
-                        <label class="form-label">Preço (R$)</label>
+                        <label class="form-label">
+                            Preço (R$)
+                        </label>
 
                         <input
                             type="number"
@@ -764,7 +905,9 @@ require dirname(__DIR__) . '/includes/header.php';
 
                     <div class="col-md-6 mb-3">
 
-                        <label class="form-label">Estoque</label>
+                        <label class="form-label">
+                            Estoque
+                        </label>
 
                         <input
                             type="number"
@@ -784,7 +927,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
                 </div>
 
-                <!-- Seleção de várias imagens -->
+                <!-- SELEÇÃO DE IMAGENS -->
 
                 <div class="mb-3">
 
@@ -795,26 +938,47 @@ require dirname(__DIR__) . '/includes/header.php';
                     <input
                         type="file"
                         name="imagens[]"
+                        id="imagensProduto"
                         class="form-control"
                         accept=".jpg,.jpeg,.png,.webp"
                         multiple
                     >
 
-                    <small class="text-muted">
-                        Você pode selecionar várias imagens de uma vez.
+                    <small class="text-muted d-block mt-2">
+                        Você pode selecionar imagens várias vezes.
+                        As novas seleções serão acumuladas até salvar o produto.
                         Formatos permitidos: JPG, PNG e WEBP.
-                        Limite de 3 MB por imagem.
+                        Limite de 8 MB por imagem.
                     </small>
+
+                    <!-- LISTA DE IMAGENS SELECIONADAS -->
+
+                    <div
+                        id="listaImagensSelecionadas"
+                        class="mt-3"
+                    ></div>
+
+                    <button
+                        type="button"
+                        id="limparImagensSelecionadas"
+                        class="btn btn-sm btn-outline-secondary mt-2"
+                        style="display: none;"
+                    >
+                        Limpar imagens selecionadas
+                    </button>
 
                 </div>
 
-                <button type="submit" class="btn btn-dark">
+                <!-- BOTÕES -->
 
+                <button
+                    type="submit"
+                    class="btn btn-dark"
+                >
                     <?= $produtoEdicao
                         ? 'Salvar alterações'
                         : 'Cadastrar produto'
                     ?>
-
                 </button>
 
                 <?php if ($produtoEdicao): ?>
@@ -830,7 +994,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
             </form>
 
-            <!-- Imagens já cadastradas -->
+            <!-- FOTOS JÁ CADASTRADAS -->
 
             <?php if ($produtoEdicao): ?>
 
@@ -864,10 +1028,12 @@ require dirname(__DIR__) . '/includes/header.php';
                                     >
 
                                     <small class="d-block text-muted mb-2">
+
                                         <?= (int) $imagem['ordem'] === 1
                                             ? 'Imagem principal'
                                             : 'Imagem ' . (int) $imagem['ordem']
                                         ?>
+
                                     </small>
 
                                     <form
@@ -925,7 +1091,7 @@ require dirname(__DIR__) . '/includes/header.php';
 
     </div>
 
-    <!-- Tabela de produtos -->
+    <!-- TABELA DE PRODUTOS -->
 
     <div class="card">
 
@@ -1021,12 +1187,16 @@ require dirname(__DIR__) . '/includes/header.php';
 
                                     <div class="d-flex flex-wrap gap-2">
 
+                                        <!-- EDITAR -->
+
                                         <a
                                             href="/mongafut_shop_v1/admin/produtos.php?editar=<?= (int) $produto['id'] ?>"
                                             class="btn btn-sm btn-primary"
                                         >
                                             Editar
                                         </a>
+
+                                        <!-- ATIVAR OU DESATIVAR -->
 
                                         <form
                                             method="POST"
@@ -1062,6 +1232,8 @@ require dirname(__DIR__) . '/includes/header.php';
                                             </button>
 
                                         </form>
+
+                                        <!-- EXCLUIR -->
 
                                         <form
                                             method="POST"
@@ -1116,5 +1288,104 @@ require dirname(__DIR__) . '/includes/header.php';
 
 </div>
 
-<?php require dirname(__DIR__) . '/includes/footer.php'; ?>
+<!-- ACUMULAR SELEÇÕES DE IMAGENS -->
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const campo = document.getElementById('imagensProduto');
+    const lista = document.getElementById('listaImagensSelecionadas');
+    const botaoLimpar = document.getElementById('limparImagensSelecionadas');
+
+    if (!campo || !lista || !botaoLimpar) {
+        return;
+    }
+
+    let arquivosAcumulados = [];
+
+    campo.addEventListener('change', function () {
+
+        const novosArquivos = Array.from(campo.files);
+
+        novosArquivos.forEach(function (arquivo) {
+
+            const jaExiste = arquivosAcumulados.some(function (existente) {
+
+                return (
+                    existente.name === arquivo.name &&
+                    existente.size === arquivo.size &&
+                    existente.lastModified === arquivo.lastModified
+                );
+
+            });
+
+            if (!jaExiste) {
+                arquivosAcumulados.push(arquivo);
+            }
+
+        });
+
+        atualizarCampo();
+    });
+
+    function atualizarCampo() {
+
+        const transferencia = new DataTransfer();
+
+        arquivosAcumulados.forEach(function (arquivo) {
+            transferencia.items.add(arquivo);
+        });
+
+        campo.files = transferencia.files;
+
+        lista.innerHTML = '';
+
+        arquivosAcumulados.forEach(function (arquivo, indice) {
+
+            const item = document.createElement('div');
+
+            item.className =
+                'd-flex justify-content-between align-items-center border rounded p-2 mb-2 gap-2';
+
+            const nome = document.createElement('span');
+
+            nome.textContent = arquivo.name;
+
+            nome.className = 'text-break';
+
+            const remover = document.createElement('button');
+
+            remover.type = 'button';
+            remover.className = 'btn btn-sm btn-outline-danger flex-shrink-0';
+            remover.textContent = 'Remover';
+
+            remover.addEventListener('click', function () {
+
+                arquivosAcumulados.splice(indice, 1);
+
+                atualizarCampo();
+            });
+
+            item.appendChild(nome);
+            item.appendChild(remover);
+
+            lista.appendChild(item);
+        });
+
+        botaoLimpar.style.display =
+            arquivosAcumulados.length > 0
+                ? 'inline-block'
+                : 'none';
+    }
+
+    botaoLimpar.addEventListener('click', function () {
+
+        arquivosAcumulados = [];
+
+        atualizarCampo();
+    });
+
+});
+</script>
+
+<?php require dirname(__DIR__) . '/includes/footer.php'; ?>
