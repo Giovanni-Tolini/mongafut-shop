@@ -2,240 +2,169 @@
 <?php
 require __DIR__ . '/config/bootstrap.php';
 
-$pdo = db();
+$user = currentUser();
 
-// Buscar categorias
-$categories = $pdo->query(
-    'SELECT id, nome FROM categorias ORDER BY nome'
-)->fetchAll();
-
-// Filtros
-$categoryId = filter_input(
-    INPUT_GET,
-    'categoria',
-    FILTER_VALIDATE_INT
-) ?: 0;
-
-$search = trim((string)($_GET['busca'] ?? ''));
-
-// Consulta dos produtos
-$sql = '
-    SELECT
-        p.*,
-        c.nome AS categoria_nome
-    FROM produtos p
-    INNER JOIN categorias c ON c.id = p.categoria_id
-    WHERE p.ativo = 1
-';
-
-$params = [];
-
-if ($categoryId > 0) {
-    $sql .= ' AND p.categoria_id = :categoria';
-    $params['categoria'] = $categoryId;
-}
-
-if ($search !== '') {
-    $sql .= '
-        AND (
-            p.nome LIKE :busca_nome
-            OR p.descricao LIKE :busca_desc
-            OR c.nome LIKE :busca_categoria
-        )
-    ';
-
-    $params['busca_nome'] = '%' . $search . '%';
-    $params['busca_desc'] = '%' . $search . '%';
-    $params['busca_categoria'] = '%' . $search . '%';
-}
-
-$sql .= ' ORDER BY p.criado_em DESC, p.nome';
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$products = $stmt->fetchAll();
-
-$pageTitle = 'Seu jogo. Seu equipamento.';
-
-require __DIR__ . '/includes/header.php';
+$pageTitle = 'Seu jogo. Sua identidade.';
 ?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Mongafut Shop — equipamentos para quem vive o futebol.">
 
-<!-- Banner principal -->
-<section class="hero mb-4">
+    <title><?= e($pageTitle) ?> | Mongafut Shop</title>
 
-    <div class="hero-copy">
-        <small>MONGAFUT SHOP / FUTEBOL EM PRIMEIRO LUGAR</small>
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 
-        <h1>
-            O SEU JOGO.<br>
-            <em>SEU EQUIPAMENTO.</em>
-        </h1>
+    <link rel="stylesheet" href="/mongafut_shop_v1/assets/css/style.css?v=2">
+</head>
 
-        <p>
-            Chuteiras e acessórios para acompanhar cada movimento,
-            em qualquer tipo de campo.
-        </p>
+<body class="home-page">
 
-        <a href="#catalogo">EXPLORAR CATÁLOGO ↗</a>
-    </div>
+    <div class="home-background">
 
-    <div class="stamp">
-        PLAY
-        <strong>YOUR<br>GAME</strong>
-        EST. 2026
-    </div>
+        <main class="home-wrapper">
 
-    <footer>
-        01 — PERFORMANCE
-        <span>CAMPO · SOCIETY · FUTSAL</span>
-    </footer>
+            <section class="home-panel">
 
-</section>
+                <header class="home-header">
 
-<!-- Catálogo -->
-<section id="catalogo">
+                    <a href="index.php" class="home-brand">
+                        <span>MONGA</span>
+                        <strong>FUT</strong>
+                    </a>
 
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+                    <nav class="home-nav">
+    <a href="catalogo.php">Catálogo</a>
+    <a href="catalogo.php?secao=chuteiras">Chuteiras</a>
+    <a href="catalogo.php?secao=acessorios">Acessórios</a>
+</nav>
 
-        <div>
-            <small>ENCONTRE SEU PRÓXIMO EQUIPAMENTO</small>
-            <h2 class="mb-0">
-                CATÁLOGO <span>DE PRODUTOS</span>
-            </h2>
-        </div>
+                    <div class="home-actions">
 
-        <!-- Busca -->
-        <form class="d-flex gap-2" method="get">
-
-            <input
-                class="form-control"
-                name="busca"
-                value="<?= e($search) ?>"
-                placeholder="Buscar produto..."
-            >
-
-            <button class="btn btn-dark">
-                Buscar
-            </button>
-
-        </form>
-
-    </div>
-
-    <!-- Filtro por categoria -->
-    <form method="get" class="row g-2 mb-4">
-
-        <div class="col-sm-8 col-md-5">
-
-            <select class="form-select" name="categoria">
-
-                <option value="0">Todas as categorias</option>
-
-                <?php foreach ($categories as $c): ?>
-
-                    <option
-                        value="<?= (int)$c['id'] ?>"
-                        <?= $categoryId === (int)$c['id'] ? 'selected' : '' ?>
-                    >
-                        <?= e($c['nome']) ?>
-                    </option>
-
-                <?php endforeach; ?>
-
-            </select>
-
-        </div>
-
-        <div class="col-auto">
-
-            <button class="btn btn-outline-dark">
-                Filtrar
-            </button>
-
-            <a class="btn btn-link" href="index.php#catalogo">
-                Limpar
-            </a>
-
-        </div>
-
-    </form>
-
-    <!-- Resultados -->
-    <?php if (!$products): ?>
-
-        <div class="alert alert-secondary">
-            Nenhum produto encontrado. Tente outra busca ou categoria.
-        </div>
-
-    <?php else: ?>
-
-        <div class="row g-4">
-
-            <?php foreach ($products as $p): ?>
-
-                <div class="col-12 col-sm-6 col-lg-4">
-
-                    <article class="card-product h-100">
-
-                        <!-- Imagem do produto -->
-                        <a
-                            class="photo d-block"
-                            href="produto.php?id=<?= (int)$p['id'] ?>"
-                        >
-
-                            <img
-                                src="<?= e(
-                                    !empty($p['imagem'])
-                                        ? 'assets/img/produtos/' . $p['imagem']
-                                        : 'assets/img/produtos/sem-imagem.svg'
-                                ) ?>"
-                                alt="<?= e($p['nome']) ?>"
-                                loading="lazy"
+                        <form action="catalogo.php" method="get" class="home-search">
+                            <input
+                                type="search"
+                                name="busca"
+                                placeholder="Buscar na loja..."
+                                aria-label="Buscar produtos"
                             >
+                            <button type="submit" aria-label="Buscar">
+                                ⌕
+                            </button>
+                        </form>
 
+                        <a href="carrinho.php" class="home-cart">
+                            Bolsa <span><?= cartCount() ?></span>
                         </a>
 
-                        <div class="info">
+                        <?php if ($user): ?>
 
-                            <small>
-                                <?= e($p['categoria_nome']) ?>
-
-                                <i>
-                                    <?= (int)$p['estoque'] > 0
-                                        ? '● EM ESTOQUE'
-                                        : '● ESGOTADO'
-                                    ?>
-                                </i>
-                            </small>
-
-                            <h3>
-                                <?= e($p['nome']) ?>
-                            </h3>
-
-                            <strong>
-                                <?= money($p['preco']) ?>
-                            </strong>
-
-                            <a
-                                class="btn btn-dark w-100 mt-3"
-                                href="produto.php?id=<?= (int)$p['id'] ?>"
-                            >
-                                VER PRODUTO
+                            <a href="#" class="home-account">
+                                <?= e($user['nome']) ?>
                             </a>
+
+                            <?php if ($user['tipo'] === 'admin'): ?>
+                                <a href="admin/index.php" class="home-account">
+                                    Admin
+                                </a>
+                            <?php endif; ?>
+
+                            <a href="logout.php" class="home-account">
+                                Sair
+                            </a>
+
+                        <?php else: ?>
+
+                            <a href="login.php" class="home-account">
+                                Entrar
+                            </a>
+
+                            <a href="cadastro.php" class="home-account">
+                                Cadastrar
+                            </a>
+
+                        <?php endif; ?>
+
+                    </div>
+
+                </header>
+
+                <div class="home-content">
+
+                    <div class="home-copy">
+
+                        <small class="home-eyebrow">
+                            MONGAFUT SHOP / FOOTBALL CULTURE
+                        </small>
+
+                        <h1>
+                            SEU JOGO.<br>
+                            <span>SUA IDENTIDADE.</span>
+                        </h1>
+
+                        <p>
+                            O futebol faz parte de quem você é.
+                            Encontre os equipamentos certos para cada
+                            partida, cada desafio e cada conquista.
+                        </p>
+
+                        <a href="catalogo.php" class="home-cta">
+                            EXPLORAR CATÁLOGO
+                            <span>↗</span>
+                        </a>
+
+                        <div class="home-features">
+                            <span>CAMPO</span>
+                            <i></i>
+                            <span>SOCIETY</span>
+                            <i></i>
+                            <span>FUTSAL</span>
+                        </div>
+
+                    </div>
+
+                    <div class="home-visual">
+
+                        <div class="home-visual-frame">
+
+                            <span class="home-visual-label">
+                                MONGAFUT / PERFORMANCE
+                            </span>
+
+                            <img
+    src="assets/img/produtos/chuteira-destaque.png"
+    alt="Chuteira Adidas em destaque"
+    class="home-boot"
+>
+
+                            <span class="home-visual-number">
+                                01
+                            </span>
 
                         </div>
 
-                    </article>
+                    </div>
 
                 </div>
 
-            <?php endforeach; ?>
+                <footer class="home-footer">
+                    <span>01 — PERFORMANCE</span>
+                    <span>SEU JOGO. SEU EQUIPAMENTO.</span>
+                    <span>EST. 2026</span>
+                </footer>
 
-        </div>
+            </section>
 
-    <?php endif; ?>
+        </main>
 
-</section>
+    </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
- 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
