@@ -1,43 +1,36 @@
 # Mongafut Shop
 
-Loja virtual acadêmica de artigos para futebol de campo, society e futsal. Projeto desenvolvido com HTML5, CSS3, Bootstrap 5, JavaScript, PHP e MySQL/MariaDB via PDO.
+O Mongafut Shop é um site de vendas de artigos esportivos voltados ao futebol de campo, society e futsal. O projeto foi desenvolvido como atividade do 4º bimestre, com o objetivo de aplicar os conhecimentos de desenvolvimento web e integração com banco de dados.
 
-## Requisitos
-- XAMPP com Apache, PHP 8.0+ e MySQL/MariaDB.
-- Navegador atualizado.
+## Tecnologias
 
-## Instalação local
-1. Copie a pasta do projeto para `C:\xampp\htdocs\mongafut_shop_v1`.
-2. No phpMyAdmin, crie o banco `mongafut_shop` com codificação `utf8mb4`.
-3. Selecione o banco e importe `database/schema.sql`.
-4. Copie `.env.example` para `.env` e configure `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASS` de acordo com seu ambiente local.
-5. Inicie Apache e MySQL no XAMPP.
-6. Acesse `http://localhost/mongafut_shop_v1/`.
+O sistema foi desenvolvido utilizando HTML, CSS, Bootstrap e JavaScript na parte visual, PHP no processamento das funcionalidades e MySQL para o armazenamento dos dados. A conexão com o banco de dados é realizada por meio do PDO.
 
-## Criar o primeiro administrador
-1. Cadastre uma conta normalmente pela opção **Cadastrar**.
-2. No phpMyAdmin, selecione `mongafut_shop` e execute, substituindo pelo e-mail usado no cadastro:
+## Funcionalidades
 
-```sql
-UPDATE usuarios SET tipo = 'admin' WHERE email = 'seu-email@exemplo.com';
-```
+O site possui cadastro e login de usuários, catálogo de produtos com pesquisa e filtros por categoria, página de detalhes dos produtos e carrinho de compras. Também permite alterar quantidades, verificar a disponibilidade em estoque e finalizar pedidos com simulação de pagamento por PIX, boleto ou cartão.
 
-3. Saia e entre novamente. O menu **Administração** ficará disponível. O acesso às páginas em `/admin` também é validado no servidor.
+Além da área do cliente, o sistema conta com uma área administrativa para cadastrar, editar e gerenciar produtos, atualizar estoques e consultar os pedidos realizados.
 
-## Funcionalidades implementadas
-- Catálogo dinâmico com produtos e categorias vindos do MySQL.
-- Pesquisa e filtro por categoria.
-- Página individual com descrição, preço, imagem e disponibilidade.
-- Cadastro e login com `password_hash()` e `password_verify()`.
-- Carrinho armazenado em `$_SESSION`, com alteração de quantidade, remoção e validação de estoque.
-- Checkout demonstrativo (PIX, boleto ou cartão), criação de pedido e itens, baixa de estoque e limpeza do carrinho.
-- Área `/admin` protegida por sessão e perfil administrativo.
-- Cadastro, listagem, edição e ativação/desativação de produtos; upload de imagens JPG, PNG ou WEBP.
-- Listagem administrativa de pedidos com seus itens e valores.
-- Consultas SQL com PDO e prepared statements; token CSRF nos formulários de alteração.
+## Banco de dados
 
-## Observações
-- O pagamento é simulado; não há cobrança real nem integração com instituição financeira.
-- O banco começa com as nove categorias definidas para a loja, sem produtos fictícios. Cadastre produtos reais pelo painel administrativo depois de confirmar modelo, descrição e imagem.
-- `.env` contém credenciais locais e não deve ser enviado ao Git. O modelo `.env.example` deve permanecer no repositório.
-- O repositório remoto e o histórico de commits devem ser mantidos pelo aluno/equipe conforme a etapa de versionamento da atividade.
+O banco de dados utiliza tabelas para armazenar usuários, categorias, produtos, imagens, pedidos e itens dos pedidos. O arquivo `schema.sql` contém a estrutura necessária para a criação do banco e sua configuração inicial.
+
+## Como executar
+
+O projeto pode ser executado localmente utilizando o XAMPP ou outro ambiente compatível com PHP e MySQL.
+
+1. Coloque a pasta do projeto no diretório `htdocs` do XAMPP.
+2. Inicie os serviços Apache e MySQL.
+3. Crie um banco de dados no MySQL e importe o arquivo `schema.sql`.
+4. Configure os dados de conexão no arquivo de configuração do projeto.
+5. Acesse `http://localhost/mongafut_shop_v1/` pelo navegador.
+
+## Segurança
+
+O sistema utiliza consultas preparadas com PDO, armazenamento de senhas com `password_hash()`, verificação com `password_verify()` e controle de acesso por sessões. Também são realizadas validações no servidor para proteger as operações da aplicação.
+
+## Informações do projeto
+
+**Projeto:** Mongafut Shop  
+**Atividade:** Challenge – 4º Bimestre  

@@ -361,7 +361,7 @@ require __DIR__ . '/includes/header.php';
         </div>
 
         <div class="shop-catalog-edition">
-            <span>MF / 026</span>
+            <span>MF / 2026</span>
             <strong>PERFORMANCE</strong>
             <small>SEU JOGO. SUA IDENTIDADE.</small>
         </div>
